@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0c0e;
+    --surface: #131316;
+    --surface2: #1a1a1f;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8e6e0;
+    --muted: #6b6a66;
+    --accent: #c8f060;
+    --accent2: #4ade80;
+    --red: #f06060;
+    --amber: #f0b860;
+    --blue: #60adf0;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Instrument Serif', serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 40px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: var(--serif);
+    font-size: 22px;
+    letter-spacing: 0.01em;
+    color: var(--text);
+    font-style: italic;
+  }
+  .logo span { color: var(--accent); font-style: normal; }
+  .header-meta {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .header-meta strong { color: var(--text); display: block; font-weight: 500; }
+
+  /* LAYOUT */
+  main { padding: 32px 40px; max-width: 1400px; margin: 0 auto; }
+
+  /* STAT CARDS */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-line, var(--border));
+  }
+  .stat-card.accent-green::before { background: var(--accent); }
+  .stat-card.accent-red::before { background: var(--red); }
+  .stat-card.accent-blue::before { background: var(--blue); }
+  .stat-card.accent-amber::before { background: var(--amber); }
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .stat-value {
+    font-size: 26px;
+    font-family: var(--serif);
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1;
+  }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .stat-sub.pos { color: var(--accent); }
+  .stat-sub.neg { color: var(--red); }
+
+  /* MAIN GRID */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* TABLE */
+  .holdings-table { width: 100%; border-collapse: collapse; }
+  .holdings-table th {
+    padding: 10px 20px;
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .holdings-table th:hover { color: var(--text); }
+  .holdings-table th.num { text-align: right; }
+  .holdings-table td {
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .holdings-table tr:last-child td { border-bottom: none; }
+  .holdings-table tr:hover td { background: var(--surface2); }
+  .holdings-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .ticker {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .asset-name { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .type-badge {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+  .type-badge.stock { border-color: rgba(96,173,240,0.3); color: var(--blue); }
+  .type-badge.bond { border-color: rgba(240,184,96,0.3); color: var(--amber); }
+  .type-badge.etf { border-color: rgba(200,240,96,0.3); color: var(--accent); }
+
+  .pos { color: var(--accent); }
+  .neg { color: var(--red); }
+
+  .price-loading { color: var(--muted); font-style: italic; }
+
+  /* allocation chart */
+  .chart-wrap {
+    padding: 20px;
+    position: relative;
+    height: 260px;
+  }
+
+  /* ADD FORM */
+  .add-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .form-input, .form-select {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+  .form-select option { background: #1a1a1f; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #0c0c0e;
+    border: none;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.98); }
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  .btn.ghost:hover { color: var(--text); border-color: var(--border2); }
+  .btn.danger-ghost {
+    background: transparent;
+    border: 1px solid rgba(240,96,96,0.2);
+    color: var(--red);
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  .btn.danger-ghost:hover { background: rgba(240,96,96,0.08); }
+
+  .form-actions {
+    padding: 0 20px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* REFRESH indicator */
+  .refresh-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .last-updated { font-size: 10px; color: var(--muted); }
+
+  /* PERF CHART */
+  .perf-panel { margin-bottom: 24px; }
+  .perf-chart-wrap { padding: 16px 20px; position: relative; height: 200px; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty-state p { margin-top: 8px; font-size: 12px; }
+
+  /* SCROLLABLE table */
+  .table-scroll { overflow-x: auto; }
+
+  @media (max-width: 900px) {
+    main { padding: 20px; }
+    header { padding: 20px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .content-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 500px) {
+    .stats-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">port<span>/</span>folio</div>
+  <div class="header-meta">
+    <strong id="header-date">—</strong>
+    <span><span class="refresh-dot"></span><span class="last-updated" id="last-updated">Fetching prices…</span></span>
+  </div>
+</header>
+
+<main>
+
+  <!-- STAT CARDS -->
+  <div class="stats-row">
+    <div class="stat-card accent-green">
+      <div class="stat-label">Total Value</div>
+      <div class="stat-value" id="stat-total">$0.00</div>
+      <div class="stat-sub" id="stat-total-sub">—</div>
+    </div>
+    <div class="stat-card accent-blue">
+      <div class="stat-label">Total Invested</div>
+      <div class="stat-value" id="stat-cost">$0.00</div>
+      <div class="stat-sub">cost basis</div>
+    </div>
+    <div class="stat-card" id="stat-gain-card">
+      <div class="stat-label">Total Gain / Loss</div>
+      <div class="stat-value" id="stat-gain">$0.00</div>
+      <div class="stat-sub" id="stat-gain-pct">—</div>
+    </div>
+    <div class="stat-card accent-amber">
+      <div class="stat-label">Holdings</div>
+      <div class="stat-value" id="stat-count">0</div>
+      <div class="stat-sub" id="stat-types">—</div>
+    </div>
+  </div>
+
+  <!-- HOLDINGS + ALLOCATION -->
+  <div class="content-grid">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Holdings</span>
+        <button class="btn ghost" onclick="refreshPrices()">↻ Refresh prices</button>
+      </div>
+      <div class="table-scroll">
+        <table class="holdings-table" id="holdings-table">
+          <thead>
+            <tr>
+              <th onclick="sortBy('ticker')">Ticker</th>
+              <th class="num" onclick="sortBy('shares')">Shares</th>
+              <th class="num" onclick="sortBy('avgCost')">Avg Cost</th>
+              <th class="num" onclick="sortBy('price')">Price</th>
+              <th class="num" onclick="sortBy('value')">Value</th>
+              <th class="num" onclick="sortBy('gain')">Gain / Loss</th>
+              <th class="num" onclick="sortBy('gainPct')">%</th>
+              <th class="num">Alloc</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="holdings-body">
+            <tr><td colspan="9"><div class="empty-state">No holdings yet.<p>Add your first position below.</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Allocation</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="alloc-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD HOLDING -->
+  <div class="add-panel">
+    <div class="panel-header">
+      <span class="panel-title">Add / Edit Holding</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Ticker Symbol</label>
+        <input class="form-input" id="inp-ticker" placeholder="e.g. AAPL, BND" autocomplete="off" style="text-transform:uppercase" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Asset Type</label>
+        <select class="form-select" id="inp-type">
+          <option value="stock">Stock</option>
+          <option value="etf">ETF</option>
+          <option value="bond">Bond / Fixed Income</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Shares / Units</label>
+        <input class="form-input" id="inp-shares" type="number" step="any" placeholder="0.00" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Avg Cost per Share ($)</label>
+        <input class="form-input" id="inp-cost" type="number" step="any" placeholder="0.00" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Manual Price (optional)</label>
+        <input class="form-input" id="inp-manual" type="number" step="any" placeholder="Leave blank for live price" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name / Notes</label>
+        <input class="form-input" id="inp-name" placeholder="e.g. Vanguard Total Bond" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="addHolding()">+ Add Holding</button>
+      <span id="form-msg" style="font-size:11px; color:var(--muted);"></span>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let holdings = JSON.parse(localStorage.getItem('pf_holdings') || '[]');
+let prices   = {};
+let sortKey  = 'value';
+let sortDir  = -1;
+let allocChart = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+document.getElementById('inp-ticker').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+
+if (holdings.length) refreshPrices(); else render();
+
+// ── FETCH PRICES (Yahoo Finance via allorigins proxy) ─────────────────────────
+async function fetchPrice(ticker) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res   = await fetch(proxy);
+    const json  = await res.json();
+    const data  = JSON.parse(json.contents);
+    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    return price ? parseFloat(price.toFixed(4)) : null;
+  } catch { return null; }
+}
+
+async function refreshPrices() {
+  if (!holdings.length) return;
+  document.getElementById('last-updated').textContent = 'Refreshing…';
+  const tickers = [...new Set(holdings.filter(h => !h.manualPrice).map(h => h.ticker))];
+  await Promise.all(tickers.map(async t => {
+    const p = await fetchPrice(t);
+    if (p) prices[t] = p;
+  }));
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  render();
+}
+
+// ── HOLDING CRUD ──────────────────────────────────────────────────────────────
+function addHolding() {
+  const ticker = document.getElementById('inp-ticker').value.trim().toUpperCase();
+  const type   = document.getElementById('inp-type').value;
+  const shares = parseFloat(document.getElementById('inp-shares').value);
+  const cost   = parseFloat(document.getElementById('inp-cost').value);
+  const manual = parseFloat(document.getElementById('inp-manual').value) || null;
+  const name   = document.getElementById('inp-name').value.trim();
+  const msg    = document.getElementById('form-msg');
+
+  if (!ticker || isNaN(shares) || shares <= 0 || isNaN(cost) || cost < 0) {
+    msg.textContent = '⚠ Please fill in Ticker, Shares, and Avg Cost.';
+    return;
+  }
+  const existing = holdings.findIndex(h => h.ticker === ticker);
+  if (existing >= 0) {
+    holdings[existing] = { ...holdings[existing], type, shares, avgCost: cost, manualPrice: manual, name };
+    msg.textContent = `Updated ${ticker}.`;
+  } else {
+    holdings.push({ id: Date.now(), ticker, type, shares, avgCost: cost, manualPrice: manual, name });
+    msg.textContent = `Added ${ticker}.`;
+  }
+  save();
+  ['inp-ticker','inp-shares','inp-cost','inp-manual','inp-name'].forEach(id => document.getElementById(id).value = '');
+  setTimeout(() => msg.textContent = '', 3000);
+
+  if (manual) {
+    prices[ticker] = manual;
+    render();
+  } else {
+    fetchPrice(ticker).then(p => { if (p) prices[ticker] = p; render(); });
+  }
+}
+
+function removeHolding(id) {
+  holdings = holdings.filter(h => h.id !== id);
+  save();
+  render();
+}
+
+function save() { localStorage.setItem('pf_holdings', JSON.stringify(holdings)); }
+
+// ── SORT ──────────────────────────────────────────────────────────────────────
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = -1; }
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  const enriched = holdings.map(h => {
+    const price = h.manualPrice || prices[h.ticker] || null;
+    const value = price ? price * h.shares : null;
+    const cost  = h.avgCost * h.shares;
+    const gain  = value !== null ? value - cost : null;
+    const gainP = gain !== null ? (gain / cost) * 100 : null;
+    return { ...h, price, value, cost, gain, gainPct: gainP };
+  });
+
+  // totals
+  const totalValue  = enriched.reduce((s, h) => s + (h.value ?? 0), 0);
+  const totalCost   = enriched.reduce((s, h) => s + h.cost, 0);
+  const totalGain   = totalValue - totalCost;
+  const totalGainPct = totalCost ? (totalGain / totalCost) * 100 : 0;
+
+  document.getElementById('stat-total').textContent = fmt(totalValue);
+  document.getElementById('stat-cost').textContent  = fmt(totalCost);
+  document.getElementById('stat-gain').textContent  = (totalGain >= 0 ? '+' : '') + fmt(totalGain);
+  document.getElementById('stat-gain-pct').textContent = (totalGainPct >= 0 ? '+' : '') + totalGainPct.toFixed(2) + '%';
+  document.getElementById('stat-count').textContent = holdings.length;
+
+  const gainCard = document.getElementById('stat-gain-card');
+  gainCard.className = 'stat-card ' + (totalGain >= 0 ? 'accent-green' : 'accent-red');
+  document.getElementById('stat-gain').className = 'stat-value ' + (totalGain >= 0 ? 'pos' : 'neg');
+  document.getElementById('stat-gain-pct').className = 'stat-sub ' + (totalGainPct >= 0 ? 'pos' : 'neg');
+
+  const stocks = holdings.filter(h => h.type === 'stock').length;
+  const etfs   = holdings.filter(h => h.type === 'etf').length;
+  const bonds  = holdings.filter(h => h.type === 'bond').length;
+  const parts  = [];
+  if (stocks) parts.push(stocks + ' stock' + (stocks > 1 ? 's' : ''));
+  if (etfs)   parts.push(etfs + ' ETF' + (etfs > 1 ? 's' : ''));
+  if (bonds)  parts.push(bonds + ' bond' + (bonds > 1 ? 's' : ''));
+  document.getElementById('stat-types').textContent = parts.join(', ') || '—';
+
+  // sort
+  const sorted = [...enriched].sort((a, b) => {
+    const va = a[sortKey] ?? -Infinity;
+    const vb = b[sortKey] ?? -Infinity;
+    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    return (va - vb) * sortDir;
+  });
+
+  // table
+  const tbody = document.getElementById('holdings-body');
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">No holdings yet.<p>Add your first position below.</p></div></td></tr>`;
+  } else {
+    tbody.innerHTML = sorted.map(h => {
+      const alloc = totalValue ? ((h.value ?? 0) / totalValue * 100).toFixed(1) : '—';
+      const priceStr = h.value === null ? '<span class="price-loading">—</span>' : '$' + (h.price?.toFixed(2) ?? '—');
+      const valueStr = h.value === null ? '—' : fmt(h.value);
+      const gainStr  = h.gain === null  ? '—' : (h.gain >= 0 ? '+' : '') + fmt(h.gain);
+      const gainPStr = h.gainPct === null ? '—' : (h.gainPct >= 0 ? '+' : '') + h.gainPct.toFixed(2) + '%';
+      const gc = h.gain === null ? '' : (h.gain >= 0 ? 'pos' : 'neg');
+      const typeLabel = h.type === 'bond' ? 'bond' : h.type;
+      return `<tr>
+        <td>
+          <div class="ticker">${h.ticker}</div>
+          ${h.name ? `<div class="asset-name">${h.name}</div>` : ''}
+          <div style="margin-top:4px"><span class="type-badge ${h.type}">${typeLabel}</span></div>
+        </td>
+        <td class="num">${h.shares % 1 === 0 ? h.shares : h.shares.toFixed(4)}</td>
+        <td class="num">$${h.avgCost.toFixed(2)}</td>
+        <td class="num">${priceStr}${h.manualPrice ? ' <span style="color:var(--muted);font-size:10px;">●</span>' : ''}</td>
+        <td class="num">${valueStr}</td>
+        <td class="num ${gc}">${gainStr}</td>
+        <td class="num ${gc}">${gainPStr}</td>
+        <td class="num" style="color:var(--muted)">${alloc}%</td>
+        <td class="num">
+          <button class="btn danger-ghost" onclick="removeHolding(${h.id})">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // allocation chart
+  renderAllocChart(enriched, totalValue);
+}
+
+function fmt(n) {
+  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── ALLOCATION CHART ──────────────────────────────────────────────────────────
+const COLORS = ['#c8f060','#60adf0','#f0b860','#f06060','#a060f0','#60f0c8','#f060a0','#f0e060','#60c8f0','#d0f060'];
+
+function renderAllocChart(enriched, totalValue) {
+  const canvas = document.getElementById('alloc-chart');
+  const withVal = enriched.filter(h => h.value && h.value > 0);
+  if (!withVal.length) {
+    if (allocChart) { allocChart.destroy(); allocChart = null; }
+    return;
+  }
+  const labels = withVal.map(h => h.ticker);
+  const data   = withVal.map(h => parseFloat((h.value / totalValue * 100).toFixed(2)));
+  const bgColors = withVal.map((_, i) => COLORS[i % COLORS.length]);
+
+  if (allocChart) allocChart.destroy();
+  allocChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: bgColors, borderColor: '#0c0c0e', borderWidth: 2, hoverOffset: 6 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#6b6a66',
+            font: { family: "'DM Mono', monospace", size: 11 },
+            boxWidth: 10, boxHeight: 10,
+            padding: 12,
+            generateLabels: chart => chart.data.labels.map((label, i) => ({
+              text: `${label}  ${data[i].toFixed(1)}%`,
+              fillStyle: bgColors[i],
+              strokeStyle: bgColors[i],
+              hidden: false,
+              index: i
+            }))
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1a1a1f',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#e8e6e0',
+          bodyColor: '#6b6a66',
+          titleFont: { family: "'DM Mono', monospace", size: 12 },
+          bodyFont: { family: "'DM Mono', monospace", size: 11 },
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.toFixed(2)}%`
+          }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
